@@ -166,7 +166,7 @@ jobs:
           docker load -i /tmp/images/frontend.tar
 
       - name: Trivy scan (api)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: localhost:5000/job-api:latest
           severity: CRITICAL
@@ -177,7 +177,7 @@ jobs:
 
       - name: Trivy scan (worker)
         if: always()
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: localhost:5000/job-worker:latest
           severity: CRITICAL
@@ -188,7 +188,7 @@ jobs:
 
       - name: Trivy scan (frontend)
         if: always()
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: localhost:5000/job-frontend:latest
           severity: CRITICAL
