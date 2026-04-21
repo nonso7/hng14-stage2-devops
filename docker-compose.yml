@@ -1,0 +1,86 @@
+name: ${COMPOSE_PROJECT_NAME:-jobapp}
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
+
+  api:
+    build:
+      context: ./api
+    image: ${API_IMAGE}:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      QUEUE_KEY: ${QUEUE_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [backend]
+    ports:
+      - "${API_PORT}:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 256M
+
+  worker:
+    build:
+      context: ./worker
+    image: ${WORKER_IMAGE}:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      QUEUE_KEY: ${QUEUE_KEY}
+      HEARTBEAT_KEY: ${HEARTBEAT_KEY}
+      HEARTBEAT_TTL: ${HEARTBEAT_TTL}
+      JOB_DURATION: ${JOB_DURATION}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [backend]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  frontend:
+    build:
+      context: ./frontend
+    image: ${FRONTEND_IMAGE}:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      API_URL: ${API_URL}
+      PORT: "3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [backend]
+    ports:
+      - "${FRONTEND_PORT}:3000"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+networks:
+  backend:
+    driver: bridge
