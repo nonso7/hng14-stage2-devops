@@ -8,6 +8,9 @@ RUN npm install --omit=dev --no-audit --no-fund
 
 FROM node:${NODE_VERSION} AS runtime
 ENV NODE_ENV=production
+RUN apk --no-cache upgrade \
+ && rm -rf /usr/local/lib/node_modules/npm \
+           /usr/local/bin/npm /usr/local/bin/npx
 WORKDIR /app
 COPY --from=builder --chown=node:node /build/node_modules ./node_modules
 COPY --chown=node:node package.json app.js healthcheck.js ./

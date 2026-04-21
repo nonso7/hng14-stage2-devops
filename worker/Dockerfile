@@ -9,7 +9,11 @@ RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 FROM python:${PYTHON_VERSION} AS runtime
-RUN groupadd --system --gid 10001 appuser \
+# hadolint ignore=DL3008
+RUN apt-get update \
+ && apt-get upgrade -y \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --system --gid 10001 appuser \
  && useradd  --system --uid 10001 --gid appuser --home-dir /app --shell /usr/sbin/nologin appuser
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
