@@ -165,7 +165,16 @@ jobs:
           docker load -i /tmp/images/worker.tar
           docker load -i /tmp/images/frontend.tar
 
-      - name: Trivy scan (api)
+      - name: Trivy findings (api)
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: localhost:5000/job-api:latest
+          severity: CRITICAL
+          exit-code: "0"
+          format: table
+          ignore-unfixed: true
+
+      - name: Trivy SARIF (api)
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: localhost:5000/job-api:latest
@@ -175,7 +184,17 @@ jobs:
           output: trivy-api.sarif
           ignore-unfixed: true
 
-      - name: Trivy scan (worker)
+      - name: Trivy findings (worker)
+        if: always()
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: localhost:5000/job-worker:latest
+          severity: CRITICAL
+          exit-code: "0"
+          format: table
+          ignore-unfixed: true
+
+      - name: Trivy SARIF (worker)
         if: always()
         uses: aquasecurity/trivy-action@0.35.0
         with:
@@ -186,7 +205,17 @@ jobs:
           output: trivy-worker.sarif
           ignore-unfixed: true
 
-      - name: Trivy scan (frontend)
+      - name: Trivy findings (frontend)
+        if: always()
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: localhost:5000/job-frontend:latest
+          severity: CRITICAL
+          exit-code: "0"
+          format: table
+          ignore-unfixed: true
+
+      - name: Trivy SARIF (frontend)
         if: always()
         uses: aquasecurity/trivy-action@0.35.0
         with:
