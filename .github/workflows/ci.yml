@@ -166,7 +166,7 @@ jobs:
           docker load -i /tmp/images/frontend.tar
 
       - name: Install Trivy CLI
-        uses: aquasecurity/setup-trivy@v0.35.0
+        uses: aquasecurity/setup-trivy@v0.2.6
         with:
           version: v0.69.3
 
