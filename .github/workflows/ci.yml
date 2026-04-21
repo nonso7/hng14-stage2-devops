@@ -165,66 +165,89 @@ jobs:
           docker load -i /tmp/images/worker.tar
           docker load -i /tmp/images/frontend.tar
 
-      - name: Trivy findings (api)
-        uses: aquasecurity/trivy-action@0.35.0
+      - name: Install Trivy CLI
+        uses: aquasecurity/setup-trivy@v0.2.3
         with:
-          image-ref: localhost:5000/job-api:latest
-          severity: CRITICAL
-          exit-code: "0"
-          format: table
-          ignore-unfixed: true
+          version: v0.69.3
 
-      - name: Trivy SARIF (api)
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: localhost:5000/job-api:latest
-          severity: CRITICAL
-          exit-code: "1"
-          format: sarif
-          output: trivy-api.sarif
-          ignore-unfixed: true
+      # Scan each image three ways:
+      #   1. Print a visible CRITICAL-only table to the job log (never fails)
+      #   2. Emit a comprehensive SARIF for the artifact (never fails)
+      #   3. Explicitly grep the SARIF for CRITICAL + fail the job if found
+      - name: Scan api (table + SARIF)
+        run: |
+          echo "::group::Trivy CRITICAL table — api"
+          trivy image \
+            --severity CRITICAL \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --format table \
+            localhost:5000/${API_IMAGE_NAME}:latest
+          echo "::endgroup::"
 
-      - name: Trivy findings (worker)
+          trivy image \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --format sarif \
+            --output trivy-api.sarif \
+            localhost:5000/${API_IMAGE_NAME}:latest
+
+      - name: Scan worker (table + SARIF)
         if: always()
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: localhost:5000/job-worker:latest
-          severity: CRITICAL
-          exit-code: "0"
-          format: table
-          ignore-unfixed: true
+        run: |
+          echo "::group::Trivy CRITICAL table — worker"
+          trivy image \
+            --severity CRITICAL \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --format table \
+            localhost:5000/${WORKER_IMAGE_NAME}:latest
+          echo "::endgroup::"
 
-      - name: Trivy SARIF (worker)
-        if: always()
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: localhost:5000/job-worker:latest
-          severity: CRITICAL
-          exit-code: "1"
-          format: sarif
-          output: trivy-worker.sarif
-          ignore-unfixed: true
+          trivy image \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --format sarif \
+            --output trivy-worker.sarif \
+            localhost:5000/${WORKER_IMAGE_NAME}:latest
 
-      - name: Trivy findings (frontend)
+      - name: Scan frontend (table + SARIF)
         if: always()
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: localhost:5000/job-frontend:latest
-          severity: CRITICAL
-          exit-code: "0"
-          format: table
-          ignore-unfixed: true
+        run: |
+          echo "::group::Trivy CRITICAL table — frontend"
+          trivy image \
+            --severity CRITICAL \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --format table \
+            localhost:5000/${FRONTEND_IMAGE_NAME}:latest
+          echo "::endgroup::"
 
-      - name: Trivy SARIF (frontend)
+          trivy image \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --format sarif \
+            --output trivy-frontend.sarif \
+            localhost:5000/${FRONTEND_IMAGE_NAME}:latest
+
+      - name: Gate on CRITICAL findings
         if: always()
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: localhost:5000/job-frontend:latest
-          severity: CRITICAL
-          exit-code: "1"
-          format: sarif
-          output: trivy-frontend.sarif
-          ignore-unfixed: true
+        run: |
+          fail=0
+          for f in trivy-api.sarif trivy-worker.sarif trivy-frontend.sarif; do
+            if [[ ! -f "$f" ]]; then
+              echo "::warning::$f was not generated"
+              continue
+            fi
+            crit=$(grep -cE '"Severity: CRITICAL"' "$f" || true)
+            echo "$f: CRITICAL count = $crit"
+            if [[ "$crit" -gt 0 ]]; then
+              echo "::error file=$f::$crit CRITICAL finding(s) detected"
+              grep -oE '"text": "[^"]*Severity: CRITICAL[^"]*"' "$f" | head -20 || true
+              fail=1
+            fi
+          done
+          exit $fail
 
       - name: Upload SARIF artifact
         if: always()
