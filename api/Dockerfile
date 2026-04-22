@@ -1,14 +1,13 @@
 # syntax=docker/dockerfile:1.7
-ARG PYTHON_VERSION=3.12-slim-bookworm
 
-FROM python:${PYTHON_VERSION} AS builder
+FROM python:3.12-slim-bookworm AS builder
 WORKDIR /build
 COPY requirements.txt .
 RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip install --no-cache-dir --upgrade pip==24.3.1 \
  && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
-FROM python:${PYTHON_VERSION} AS runtime
+FROM python:3.12-slim-bookworm AS runtime
 # hadolint ignore=DL3008
 RUN apt-get update \
  && apt-get upgrade -y \
